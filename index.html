@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <title>Lecture Range Marker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #faf9f5;
+      --surface: #ffffff;
+      --surface-2: #f0eee6;
+      --border: #e8e6dc;
+      --text: #141413;
+      --muted: #6b6a63;
+      --accent: #c6613f;
+      --accent-hover: #b0532f;
+      --accent-soft: #f6e4db;
+      --on-accent: #ffffff;
+      --danger: #b53333;
+      --shadow: 0 1px 2px rgba(20, 20, 19, .06), 0 4px 16px rgba(20, 20, 19, .05);
+      --serif: "Tiempos Text", "Source Serif 4", Georgia, "Times New Roman", serif;
+      --sans: "Styrene B", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      color-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #262624; --surface: #30302e; --surface-2: #3a3938; --border: #4a4945;
+        --text: #faf9f5; --muted: #a8a69c; --accent: #d97757; --accent-hover: #e48a6b;
+        --accent-soft: #4a3a33; --on-accent: #1f1e1d; --danger: #e5837f;
+        --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 16px rgba(0, 0, 0, .25);
+        color-scheme: dark;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #262624; --surface: #30302e; --surface-2: #3a3938; --border: #4a4945;
+      --text: #faf9f5; --muted: #a8a69c; --accent: #d97757; --accent-hover: #e48a6b;
+      --accent-soft: #4a3a33; --on-accent: #1f1e1d; --danger: #e5837f;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 16px rgba(0, 0, 0, .25);
+      color-scheme: dark;
+    }
+
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+      margin: 0; padding: 20px 16px 40px; background: var(--bg); color: var(--text);
+      font-family: var(--sans); line-height: 1.5; transition: background .2s, color .2s;
+    }
+    .app { max-width: 640px; margin: 0 auto; }
+
+    header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand svg { width: 28px; height: 28px; color: var(--accent); }
+    h1 { font-family: var(--serif); font-weight: 500; font-size: 24px; letter-spacing: -.01em; margin: 0; }
+    .theme-btn {
+      background: transparent; color: var(--muted); border: 1px solid var(--border);
+      width: 40px; height: 40px; border-radius: 10px; font-size: 18px; padding: 0; cursor: pointer;
+    }
+    .theme-btn:hover { background: var(--surface-2); color: var(--text); }
+
+    .row { display: flex; gap: 8px; }
+    input[type="text"] {
+      flex: 1; min-width: 0; padding: 12px 14px; border-radius: 12px; font: inherit; font-size: 16px;
+      border: 1px solid var(--border); background: var(--surface); color: var(--text);
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input::placeholder { color: var(--muted); }
+    input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+    button { font-family: var(--sans); cursor: pointer; border: none; font-weight: 500; font-size: 15px; border-radius: 12px; transition: background .15s, transform .05s; }
+    button:active { transform: scale(.985); }
+    button:focus-visible, .range-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .btn-load { background: var(--accent); color: var(--on-accent); padding: 12px 20px; }
+    .btn-load:hover { background: var(--accent-hover); }
+
+    #player-wrap {
+      position: relative; width: 100%; padding-bottom: 56.25%; margin-top: 14px;
+      background: var(--surface-2); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow);
+    }
+    #player, #player-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .placeholder { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 20px; color: var(--muted); font-family: var(--serif); font-size: 17px; }
+    .placeholder.hidden { display: none; }
+
+    .label-row { margin-top: 14px; }
+
+    .btn-mark { width: 100%; padding: 16px; font-size: 17px; margin: 12px 0 4px; color: var(--on-accent); }
+    .btn-start { background: var(--accent); }
+    .btn-start:hover { background: var(--accent-hover); }
+    .btn-stop { background: var(--text); color: var(--bg); }
+    .btn-stop::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); margin-right: 10px; animation: pulse 1.4s ease-in-out infinite; }
+    @keyframes pulse { 50% { opacity: .3; } }
+
+    h2 { font-family: var(--serif); font-weight: 500; font-size: 18px; margin: 24px 0 10px; }
+    .empty { color: var(--muted); font-family: var(--serif); font-style: italic; padding: 8px 2px; }
+
+    ul { list-style: none; padding: 0; margin: 0; }
+    li {
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      background: var(--surface); border: 1px solid var(--border); padding: 10px 10px 10px 14px;
+      border-radius: 12px; margin-bottom: 8px;
+    }
+    .range-link { color: var(--accent); font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 15px; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; background: none; border: none; padding: 0; }
+    .label-text { color: var(--muted); margin-left: 8px; font-family: var(--serif); font-size: 16px; overflow-wrap: anywhere; }
+    .del-btn { background: transparent; color: var(--muted); padding: 6px 10px; font-size: 16px; border-radius: 8px; }
+    .del-btn:hover { background: var(--surface-2); color: var(--danger); }
+
+    .action-row { display: flex; gap: 8px; margin-top: 14px; }
+    .btn-copy { background: var(--surface); color: var(--text); border: 1px solid var(--border); flex: 1; padding: 12px; }
+    .btn-copy:hover { background: var(--surface-2); }
+    .btn-export { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); flex: 1; padding: 12px; }
+    .btn-export:hover { background: var(--border); }
+
+    #toast {
+      position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+      background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-size: 14px;
+      transition: opacity .2s, transform .2s;
+    }
+    #toast.show { opacity: 1; transform: translate(-50%, 0); }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true">
+          <path d="M16 3v26M3 16h26M6.8 6.8l18.4 18.4M25.2 6.8L6.8 25.2" />
+        </svg>
+        <h1>Lecture Range Marker</h1>
+      </div>
+      <button class="theme-btn" id="theme-btn" aria-label="Toggle dark mode" onclick="toggleTheme()">☾</button>
+    </header>
+
+    <div class="row">
+      <input type="text" id="yt-url" placeholder="Paste a YouTube lecture link" inputmode="url" autocomplete="off" />
+      <button class="btn-load" onclick="loadVideo()">Load</button>
+    </div>
+
+    <div id="player-wrap">
+      <div id="player"></div>
+      <div class="placeholder" id="placeholder">Paste a link above to load your lecture.</div>
+    </div>
+
+    <div class="row label-row">
+      <input type="text" id="note-label" placeholder="Label for this range (optional, add any time)" />
+    </div>
+
+    <button id="mark-btn" class="btn-mark btn-start" onclick="toggleRange()">Start range</button>
+
+    <h2>Saved ranges</h2>
+    <ul id="timestamp-list"></ul>
+
+    <div class="action-row">
+      <button class="btn-copy" onclick="copyList()">Copy all</button>
+      <button class="btn-export" onclick="exportTxt()">Export .txt</button>
+    </div>
+  </div>
+  <div id="toast" role="status"></div>
+
+    <script>
+    let player;
+    let currentVideoId = '';
+    let pointers = [];
+    let pendingStart = null;
+    let ticker = null;
+
+    /* ---------- Theme ---------- */
+    function applyTheme(t) {
+      document.documentElement.setAttribute('data-theme', t);
+      document.getElementById('theme-btn').textContent = t === 'dark' ? '☀' : '☾';
+    }
+    function toggleTheme() {
+      const cur = document.documentElement.getAttribute('data-theme');
+      const next = cur === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+      try { localStorage.setItem('lrm-theme', next); } catch (e) {}
+    }
+    (function initTheme() {
+      let saved = null;
+      try { saved = localStorage.getItem('lrm-theme'); } catch (e) {}
+      applyTheme(saved || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+    })();
+
+    /* ---------- Helpers ---------- */
+    function toast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(toast._t);
+      toast._t = setTimeout(() => t.classList.remove('show'), 1800);
+    }
+    function esc(s) {
+      return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+    function extractVideoID(url) {
+      const m = url.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|live\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+      return m ? m[1] : null;
+    }
+    function formatTime(sec) {
+      sec = Math.floor(sec);
+      const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+      return (h > 0 ? String(h).padStart(2, '0') + ':' : '') + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+    }
+
+    /* ---------- Player (iframe + postMessage, no external script) ---------- */
+    let frame = null, curTime = 0;
+    const YT_ORIGIN = 'https://www.youtube.com';
+    player = {
+      getCurrentTime: () => curTime,
+      seekTo: (sec) => { send('seekTo', [sec, true]); curTime = sec; },
+      loadVideoById: (id) => mount(id)
+    };
+    function send(func, args) {
+      if (frame && frame.contentWindow) frame.contentWindow.postMessage(JSON.stringify({ event: 'command', func, args: args || [] }), YT_ORIGIN);
+    }
+    function mount(id) {
+      const host = document.getElementById('player');
+      host.innerHTML = '';
+      curTime = 0;
+      frame = document.createElement('iframe');
+      frame.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+      frame.allowFullscreen = true;
+      frame.referrerPolicy = 'strict-origin-when-cross-origin';
+      frame.src = `${YT_ORIGIN}/embed/${id}?enablejsapi=1&playsinline=1&rel=0&origin=${encodeURIComponent(location.origin)}`;
+      frame.addEventListener('load', () => {
+        let n = 0;
+        const t = setInterval(() => {
+          if (!frame || ++n > 10) return clearInterval(t);
+          frame.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), YT_ORIGIN);
+        }, 400);
+      });
+      host.appendChild(frame);
+    }
+    window.addEventListener('message', (e) => {
+      if (e.origin !== YT_ORIGIN) return;
+      try {
+        const d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+        const t = d && d.info && d.info.currentTime;
+        if (typeof t === 'number') curTime = t;
+      } catch (err) {}
+    });
+    function loadVideo() {
+      const id = extractVideoID(document.getElementById('yt-url').value.trim());
+      if (!id) return toast('That doesn’t look like a YouTube link.');
+      currentVideoId = id;
+      pointers = [];
+      resetRecordButton();
+      renderList();
+      document.getElementById('placeholder').classList.add('hidden');
+      mount(id);
+    }
+    document.getElementById('yt-url').addEventListener('keydown', e => { if (e.key === 'Enter') loadVideo(); });
+
+    /* ---------- Range recording ---------- */
+    function resetRecordButton() {
+      pendingStart = null;
+      clearInterval(ticker);
+      const btn = document.getElementById('mark-btn');
+      btn.textContent = 'Start range';
+      btn.className = 'btn-mark btn-start';
+    }
+    function updateStopLabel() {
+      if (pendingStart === null || !player || !player.getCurrentTime) return;
+      document.getElementById('mark-btn').textContent =
+        `Stop range · ${formatTime(pendingStart)} to ${formatTime(player.getCurrentTime())}`;
+    }
+    function toggleRange() {
+      if (!frame) return toast('Load a video first.');
+      const now = player.getCurrentTime();
+      const btn = document.getElementById('mark-btn');
+
+      if (pendingStart === null) {
+        pendingStart = now;
+        btn.className = 'btn-mark btn-stop';
+        updateStopLabel();
+        ticker = setInterval(updateStopLabel, 500);
+      } else {
+        const startSec = Math.min(pendingStart, now);
+        const endSec = Math.max(pendingStart, now);
+        const labelEl = document.getElementById('note-label');
+        pointers.push({
+          startSec, endSec,
+          formattedRange: `${formatTime(startSec)} - ${formatTime(endSec)}`,
+          label: labelEl.value.trim()
+        });
+        labelEl.value = '';
+        resetRecordButton();
+        renderList();
+        toast('Range saved');
+      }
+    }
+
+    /* ---------- List ---------- */
+    function seekTo(sec) { if (player && player.seekTo) player.seekTo(sec, true); }
+    function removeItem(idx) { pointers.splice(idx, 1); renderList(); }
+    function renderList() {
+      const ul = document.getElementById('timestamp-list');
+      if (!pointers.length) {
+        ul.innerHTML = '<li class="empty" style="border:none;background:none;padding:4px 2px">No ranges yet. Start one while the lecture plays.</li>';
+        return;
+      }
+      ul.innerHTML = pointers.map((p, i) => `
+        <li>
+          <div>
+            <button class="range-link" onclick="seekTo(${p.startSec})">${p.formattedRange}</button>
+            ${p.label ? `<span class="label-text">${esc(p.label)}</span>` : ''}
+          </div>
+          <button class="del-btn" aria-label="Delete range" onclick="removeItem(${i})">✕</button>
+        </li>`).join('');
+    }
+
+    /* ---------- Output ---------- */
+    function getFormattedOutput() {
+      const url = document.getElementById('yt-url').value.trim();
+      const header = url ? `Lecture: ${url}\n\n` : '';
+      return header + pointers.map(p => `${p.formattedRange}${p.label ? ' — ' + p.label : ''}`).join('\n');
+    }
+    function copyList() {
+      if (!pointers.length) return toast('No ranges recorded yet.');
+      navigator.clipboard.writeText(getFormattedOutput()).then(() => toast('Copied to clipboard'), () => toast('Couldn’t copy. Try Export instead.'));
+    }
+    function exportTxt() {
+      if (!pointers.length) return toast('No ranges recorded yet.');
+      const blob = new Blob([getFormattedOutput()], { type: 'text/plain;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `lecture-ranges-${currentVideoId || 'notes'}.txt`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    }
+
+    renderList();
+  </script>
+</body>
+</html>
